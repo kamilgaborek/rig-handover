@@ -46,6 +46,7 @@ export const readNight: ReadNight = (runsDir, night) => {
   if (text === null) return null;
 
   const byJob = new Map<string, DigestRow>();
+  const counts: Record<RunStatus, number> = { ok: 0, retry: 0, fail: 0 };
   let badLines = 0;
 
   for (const raw of text.split('\n')) {
@@ -55,6 +56,7 @@ export const readNight: ReadNight = (runsDir, night) => {
       badLines += 1;
       continue;
     }
+    counts[line.status] += 1;
     const row = byJob.get(line.job);
     if (row === undefined) {
       byJob.set(line.job, {
@@ -78,21 +80,10 @@ export const readNight: ReadNight = (runsDir, night) => {
   }
 
   const rows = [...byJob.values()].sort((a, b) => (a.job < b.job ? -1 : a.job > b.job ? 1 : 0));
-  return { night, rows, badLines };
+  return { night, rows, badLines, counts };
 };
 
-// Line counts by status for the status board. A row keeps its retry count and its last status,
-// so: retries count as retry lines, a last status of `fail` counts as one fail line, and the
-// rest of the job's runs count as ok.
-export function nightCounts(night: Night): { ok: number; retry: number; fail: number } {
-  let ok = 0;
-  let retry = 0;
-  let fail = 0;
-  for (const row of night.rows) {
-    const failed = row.lastStatus === 'fail' ? 1 : 0;
-    retry += row.retries;
-    fail += failed;
-    ok += row.runs - row.retries - failed;
-  }
-  return { ok, retry, fail };
+// Line counts by status for the status board.
+export function nightCounts(night: Night): Record<RunStatus, number> {
+  return { ...night.counts };
 }

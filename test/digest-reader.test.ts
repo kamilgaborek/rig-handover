@@ -62,7 +62,7 @@ describe('readNight edge cases', () => {
 
   it('returns a Night with no rows for an empty file', () => {
     writeFileSync(join(tmp, '2026-01-02.jsonl'), '');
-    expect(readNight(tmp, '2026-01-02')).toEqual({ night: '2026-01-02', rows: [], badLines: 0 });
+    expect(readNight(tmp, '2026-01-02')).toEqual({ night: '2026-01-02', rows: [], badLines: 0, counts: { ok: 0, retry: 0, fail: 0 } });
   });
 
   it('keeps null owners and counts bad lines without throwing', () => {
@@ -81,6 +81,7 @@ describe('readNight edge cases', () => {
     expect(night).toEqual({
       night: '2026-01-03',
       badLines: 5,
+      counts: { ok: 0, retry: 1, fail: 1 },
       rows: [
         {
           job: 'a',
@@ -95,5 +96,15 @@ describe('readNight edge cases', () => {
       ],
     });
     expect(night && nightCounts(night)).toEqual({ ok: 0, retry: 1, fail: 1 });
+  });
+
+  it('counts a fail that is not the last line of its job', () => {
+    const lines = [
+      '{"at":"2026-01-04T01:00:00+01:00","job":"a","status":"fail","owner":"x","error":"boom"}',
+      '{"at":"2026-01-04T01:05:00+01:00","job":"a","status":"ok","owner":"x"}',
+    ];
+    writeFileSync(join(tmp, '2026-01-04.jsonl'), lines.join('\n'));
+    const night = readNight(tmp, '2026-01-04');
+    expect(night && nightCounts(night)).toEqual({ ok: 1, retry: 0, fail: 1 });
   });
 });
