@@ -7,6 +7,8 @@ import { DigestPage, NoDigest } from './views/digest.js';
 import { Layout } from './views/layout.js';
 import { StatusBoard } from './views/status.js';
 
+const NIGHT = /^\d{4}-\d{2}-\d{2}$/;
+
 export function createApp(config: RigConfig = loadConfig()) {
   const app = new Hono();
 
@@ -22,7 +24,7 @@ export function createApp(config: RigConfig = loadConfig()) {
 
   app.get('/digest/:night', (c) => {
     const id = c.req.param('night');
-    const night = /^\d{4}-\d{2}-\d{2}$/.test(id) ? readNight(config.runsDir, id) : null;
+    const night = NIGHT.test(id) ? readNight(config.runsDir, id) : null;
     if (night === null) {
       return c.html(
         <Layout title={`digest ${id}`} lane={lane()}>
@@ -36,6 +38,14 @@ export function createApp(config: RigConfig = loadConfig()) {
         <DigestPage night={night} />
       </Layout>,
     );
+  });
+
+  // Same rows as the page, same order (ADR 0001: the page and the JSON never disagree).
+  app.get('/api/digest/:night', (c) => {
+    const night = c.req.param('night');
+    const data = NIGHT.test(night) ? readNight(config.runsDir, night) : null;
+    if (data === null) return c.json({ error: `no run log for ${night}` }, 404);
+    return c.json(data);
   });
 
   return app;
